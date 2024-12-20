@@ -28,3 +28,8 @@
 .boom {
 	background-color: red;
 }
+
+.boss {
+    background-color: firebrick; 
+    border-radius: 40px; 
+}

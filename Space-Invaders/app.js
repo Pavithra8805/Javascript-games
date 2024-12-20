@@ -7,6 +7,8 @@ let invadersId
 let isGoingRight = true
 let direction = 1
 let results = 0
+let level = 1;
+let bossAppeared = false;
 
 for (let i = 0; i < width * width; i++) {
     const square = document.createElement("div")
@@ -30,7 +32,7 @@ function draw() {
     }
 }
 
-draw();
+// draw();
 
 squares[currentShooterIndex].classList.add("shooter")
 
@@ -41,6 +43,7 @@ function remove() {
 }
 
 function moveShooter(e) {
+    e.preventDefault();
     squares[currentShooterIndex].classList.remove("shooter")
     switch (e.key) {
         case "ArrowLeft":
@@ -88,40 +91,106 @@ function moveInvaders() {
     }
 
     if (aliensRemoved.length === alienInvaders.length) {
-        resultDisplay.innerHTML = "YOU WIN"
-        clearInterval(invadersId)
+        level++;
+        resultDisplay.innerHTML = `Level ${level} Complete!`;
+        setTimeout(startNextLevel, 1000);
     }
 }
 
-invadersId = setInterval(moveInvaders, 600)
+function startNextLevel() {
+    // Check if boss should appear
+    if (level % 2 === 0 && !bossAppeared) { // Boss appears every 2 levels
+        addBoss(); // Add a boss to the grid
+    } else {
+        alienInvaders = [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+            15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            30, 31, 32, 33, 34, 35, 36, 37, 38, 39
+        ];
+    }
 
-function shoot(e) {
-    let laserId
-    let currentLaserIndex = currentShooterIndex
+    aliensRemoved = [];
+    results = level * 10; // Increase score based on level
+    resultsDisplay.innerHTML = `Score: ${results} | Level: ${level}`;
+    invadersId = setInterval(moveInvaders, 100);
+}
 
-    function moveLaser() {
-        squares[currentLaserIndex].classList.remove("laser")
-        currentLaserIndex -= width
-        squares[currentLaserIndex].classList.add("laser")
+invadersId = setInterval(moveInvaders, 100);
 
-        if (squares[currentLaserIndex].classList.contains("invader")) {
-            squares[currentLaserIndex].classList.remove("laser")
-            squares[currentLaserIndex].classList.remove("invader")
-            squares[currentLaserIndex].classList.add("boom")
+// Boss enemy (appears at the end of a level)
+function addBoss() {
+    bossAppeared = true;
+    const bossIndex = 112; // Place boss in a fixed position (index 112)
+    squares[bossIndex].classList.add('boss');
+    squares[bossIndex].style.backgroundColor = 'red'; // Boss color
 
-            setTimeout(() => squares[currentLaserIndex].classList.remove("boom"), 300)
-            clearInterval(laserId)
+    // Define special boss behaviors
+    let bossHealth = 5;
+    function moveBoss() {
+        // Example: Boss moves up and down on the screen
+        let moveDirection = 1;
+        let bossCurrentIndex = bossIndex;
 
-            const alienRemoved = alienInvaders.indexOf(currentLaserIndex)
-            aliensRemoved.push(alienRemoved)
-            results++
-            resultDisplay.innerHTML = results
+        function move() {
+            squares[bossCurrentIndex].classList.remove('boss');
+            bossCurrentIndex += width * moveDirection; // Move boss vertically
+            squares[bossCurrentIndex].classList.add('boss');
+
+            // If boss hits the shooter, end game
+            if (squares[bossCurrentIndex].classList.contains('shooter')) {
+                resultsDisplay.innerHTML = 'GAME OVER - Boss won!';
+                clearInterval(invadersId);
+            }
         }
+
+        setInterval(move, 500);
     }
 
-    if (e.key === "ArrowUp") {
-        laserId = setInterval(moveLaser, 100)
+    moveBoss();
+}
+
+// Shoot a laser
+function shoot(e) {
+    e.preventDefault(); // Prevent default behavior
+
+    if (e.key === 'ArrowUp') {
+        let laserId;
+        let currentLaserIndex = currentShooterIndex;
+        function moveLaser() {
+            squares[currentLaserIndex].classList.remove('laser');
+            currentLaserIndex -= width;
+            squares[currentLaserIndex].classList.add('laser');
+
+            // Check for laser hitting invader or boss
+            if (squares[currentLaserIndex].classList.contains('invader')) {
+                squares[currentLaserIndex].classList.remove('laser');
+                squares[currentLaserIndex].classList.remove('invader');
+                squares[currentLaserIndex].classList.add('boom');
+                setTimeout(() => squares[currentLaserIndex].classList.remove('boom'), 300);
+
+                const alienRemoved = alienInvaders.indexOf(currentLaserIndex);
+                aliensRemoved.push(alienRemoved);
+                results += 10; // Increase score by 10 for each invader hit
+                resultsDisplay.innerHTML = `Score: ${results} | Level: ${level}`;
+                clearInterval(laserId);
+            } else if (squares[currentLaserIndex].classList.contains('boss')) {
+                squares[currentLaserIndex].classList.remove('laser');
+                squares[currentLaserIndex].classList.remove('boss');
+                squares[currentLaserIndex].classList.add('boom');
+                setTimeout(() => squares[currentLaserIndex].classList.remove('boom'), 300);
+
+                // Boss takes damage
+                bossHealth--;
+                if (bossHealth <= 0) {
+                    alert('Boss defeated! Next level.');
+                    bossAppeared = false;
+                    setTimeout(startNextLevel, 1000); // Start the next level after defeating the boss
+                }
+                clearInterval(laserId);
+            }
+        }
+        laserId = setInterval(moveLaser, 100);
     }
 }
 
-document.addEventListener('keydown', shoot)
+document.addEventListener('keydown', shoot);
