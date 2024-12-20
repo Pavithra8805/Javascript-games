@@ -13,6 +13,23 @@ let timerId
 let outcomeTimerId
 let currentTime = 20
 
+const logSpeeds = [500, 800, 1000];
+const carSpeeds = [400, 700, 900];
+
+const backgroundMusic = new Audio(`background-music.mp3`);
+backgroundMusic.loop = true;
+backgroundMusic.volume = 0.6;
+
+function startBackgroundMusic() {
+    backgroundMusic.play().catch((error) => {
+        console.error('Error playing background music:', error);
+    });
+}
+
+function stopBackgroundMusic() {
+    backgroundMusic.pause();
+    backgroundMusic.currentTime = 0;
+}
 function moveFrog(e) {
     squares[currentIndex].classList.remove('frog')
 
@@ -36,10 +53,26 @@ function moveFrog(e) {
 function autoMoveElements() {
     currentTime--
     timeLeftDisplay.textContent = currentTime
-    logsLeft.forEach(logLeft => moveLogLeft(logLeft))
-    logsRight.forEach(logRight => moveLogRight(logRight))
-    carsLeft.forEach(carLeft => moveCarLeft(carLeft))
-    carsRight.forEach(carRight => moveCarRight(carRight))
+    moveLogsAndCars(logsLeft, logSpeeds, moveLogLeft)
+    moveLogsAndCars(logsRight, logSpeeds, moveLogRight)
+    moveLogsAndCars(carsLeft, carSpeeds, moveCarLeft)
+    moveLogsAndCars(carsRight, carSpeeds, moveCarRight)
+}
+
+let logIntervalIds = [];
+let carIntervalIds = [];
+
+function moveLogsAndCars(obstacles, speeds, moveFunction) {
+    obstacles.forEach(obstacle => {
+        let speed = speeds[Math.floor(Math.random() * speeds.length)]; 
+
+        let intervalId = setInterval(() => moveFunction(obstacle), speed);       
+        if (obstacle.classList.contains('log-left') || obstacle.classList.contains('log-right')) {
+            logIntervalIds.push(intervalId); 
+        } else {
+            carIntervalIds.push(intervalId); 
+        }
+    });
 }
 
 function checkOutComes() {
@@ -131,6 +164,27 @@ function moveCarRight(carRight) {
     }
 }
 
+let score = 0; // Initialize score
+let lives = 3; // Initialize lives
+
+// Function to update score and lives
+function updateScoreAndLives() {
+    if (squares[currentIndex].classList.contains('car') || squares[currentIndex].classList.contains('log')) {
+        lives--;
+        if (lives <= 0) {
+            resultDisplay.textContent = 'Game Over!';
+            clearInterval(timerId);
+            clearInterval(outcomeTimerId);
+            document.removeEventListener('keyup', moveFrog);
+        }
+    }
+    
+    if (squares[currentIndex].classList.contains('ending-block')) {
+        score++;
+        resultDisplay.textContent = `Score: ${score} | Lives: ${lives}`;
+    }
+}
+
 function lose() {
     if (
         squares[currentIndex].classList.contains('c1') ||
@@ -139,16 +193,24 @@ function lose() {
         currentTime <= 0
     ) {
         resultDisplay.textContent = 'You lose!'
+        logIntervalIds.forEach(id => clearInterval(id)); 
+        carIntervalIds.forEach(id => clearInterval(id)); 
+        logIntervalIds = [];
+        carIntervalIds = [];
         clearInterval(timerId)
         clearInterval(outcomeTimerId)
         squares[currentIndex].classList.remove('frog')
         document.removeEventListener('keyup', moveFrog)
+        stopBackgroundMusic();
     }
 }
 
 function win() {
     if (squares[currentIndex].classList.contains('ending-block')) {
-        resultDisplay.textContent = 'You Win!'
+        score++;
+        resultDisplay.textContent = `Score: ${score} | Lives: ${lives}`;
+        goalSound.play();
+        resultDisplay.textContent = 'You Win!';
         clearInterval(timerId)
         clearInterval(outcomeTimerId)
         document.removeEventListener('keyup', moveFrog)
@@ -157,14 +219,34 @@ function win() {
 
 startPauseButton.addEventListener('click', () => {
     if (timerId) {
+        logIntervalIds.forEach(id => clearInterval(id)); 
+        carIntervalIds.forEach(id => clearInterval(id)); 
+        logIntervalIds = []; 
+        carIntervalIds = []; 
         clearInterval(timerId)
         clearInterval(outcomeTimerId)
         outcomeTimerId = null
         timerId = null
         document.removeEventListener('keyup', moveFrog)
+        stopBackgroundMusic();
     } else {
         timerId = setInterval(autoMoveElements, 1000)
         outcomeTimerId = setInterval(checkOutComes, 50)
         document.addEventListener('keyup', moveFrog)
+        startBackgroundMusic();
     }
 })
+const goalSound = new Audio('goal-sound.mp3')
+const jumpSound = new Audio('jump-sound.mp3'); 
+const collisionSound = new Audio('collision-sound.mp3'); 
+document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'ArrowUp') { 
+        jumpSound.play();
+    }
+});
+
+function checkForCollisions() {
+    if (squares[currentIndex].classList.contains('car') || squares[currentIndex].classList.contains('log')) {
+        collisionSound.play();
+    }
+}
