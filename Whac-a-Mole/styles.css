@@ -15,3 +15,8 @@
     background-image: url('images/mole.jpg');
     background-size: cover;
 }
+
+.bonus {
+    background-image: url('bonus-mole.jpeg'); 
+    background-size: cover;
+}
